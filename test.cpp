@@ -9,6 +9,9 @@ using namespace cv;
 int main(int argc, char** argv)
 {
 
+    int trow = 0;
+    int tcol = 0;
+    
     const char* default_file = "../../cvminecraft/data/image/lane1.jpg";
     const char* filename = argc >=2 ? argv[1] : default_file;
 
@@ -41,10 +44,16 @@ int main(int argc, char** argv)
     // The 4 points that select quadilateral on the input , from top-left in clockwise order
     // These four pts are the sides of the rect box used as input 
 
-    inputQuad[0] = Point2f(622,430);
-    inputQuad[1] = Point2f(662,430);
-    inputQuad[2] = Point2f(1276,621);
-    inputQuad[3] = Point2f(3, 621);
+    inputQuad[0] = Point2f(535,455);
+    inputQuad[1] = Point2f(785,455);
+    inputQuad[2] = Point2f(1276,568);
+    inputQuad[3] = Point2f(177, 568);
+
+
+    //inputQuad[0] = Point2f(622,430);
+    //inputQuad[1] = Point2f(662,430);
+    //inputQuad[2] = Point2f(1276,621);
+    //inputQuad[3] = Point2f(3, 621);
     // The 4 points where the mapping is to be done , from top-left in clockwise order
     outputQuad[0] = Point2f( 0,0 );
     outputQuad[1] = Point2f( input.cols-1,0);
@@ -66,48 +75,49 @@ int main(int argc, char** argv)
 
     //-------------------------- HSV color filter to remove useless colors -----------------
     Mat topview_yellow_filter;
+    Mat topview_white_filter;
 
 
     const int max_value = 255;
 
-    //int low_H = 0;
-    //int high_H = 180;
-
-    //int low_S = 120;
-    //int high_S = 255;
-
-    //int low_L = 40;
-    //int high_L = 255;
-
     int low_H = 0;
     int high_H = 180;
 
-    int low_S = 70;
+    int low_S = 60;
     int high_S = 255;
 
-    int low_V = 170;
+    int low_V = 220;
     int high_V = 255;
-
-
-    //p = { 'sat_thresh': 120, 'light_thresh': 40, 'light_thresh_agr': 205,\n"
 
     // Convert from BGR to HSV colorspace
     cvtColor(topview_c, topview_yellow_filter, COLOR_RGB2HSV);
-
-
-    //self.color_cond1 = (self.s > self.sat_thresh) & (self.l > self.light_thresh)
-    //self.color_cond2 = self.l > self.light_thresh_agr
-    //b = self.z.copy()
-    //b[(self.color_cond1 | self.color_cond2)] = 1
-
-    Mat color_cond1, color_cond2;
-
+    
     cout<<"low_H = "<<low_H<<endl;
 
     // Detect the object based on HSV Range Values
     inRange(topview_yellow_filter, Scalar(low_H, low_S, low_V), Scalar(high_H, high_S, high_V), topview_yellow_filter);
 
+
+    //configure for white color
+    low_H = 0;
+    high_H = 180;
+
+    low_S = 18;
+    high_S = 60;
+
+    low_V = 180;
+    high_V = 255;
+
+    // Convert from BGR to HSV colorspace
+    cvtColor(topview_c, topview_white_filter, COLOR_RGB2HSV);
+
+    cout<<"low_H = "<<low_H<<endl;
+
+    // Detect the object based on HSV Range Values
+    inRange(topview_white_filter, Scalar(low_H, low_S, low_V), Scalar(high_H, high_S, high_V), topview_white_filter);
+
     imshow("topview_yellow_filter",topview_yellow_filter);
+    imshow("topview_white_filter",topview_white_filter);
     waitKey(0);
 
     //-------------------------- CurveDetection -----------------
@@ -115,41 +125,59 @@ int main(int argc, char** argv)
     CurveDetection cd;
 
     Mat topview_yellow_curve;
+    Mat topview_white_curve;
+
     topview_yellow_curve = topview_c.clone();
+    topview_white_curve = topview_c.clone();
 
     cd.setBinaryInput(topview_yellow_filter);
     cd.findLocations();
     cd.solve();
-    vector<Point2d> result = cd.getResult();
-    int trow = 0;
-    int tcol = 0;
+    vector<Point2d> result_y = cd.getResult();
 
-    Mat loc_mat = Mat::zeros( topview_yellow_filter.rows, topview_yellow_filter.cols, topview_yellow_filter.type() );
-
-    vector<Point> loc = cd.getLocations();
-
-    for(int i = 0; i<result.size(); i++)
+    Mat loc_mat_y = Mat::zeros( topview_yellow_filter.rows, topview_yellow_filter.cols, topview_yellow_filter.type() );
+    vector<Point> print_points_y = cd.getLocations();
+    for(int i = 0; i<result_y.size(); i++)
     {
-        //cout<<"result[i] = "<<result[i]<<endl;
-        trow = result[i].y;
-        tcol = result[i].x;
-        //cout<<"tcol = "<<tcol<<", trow = "<<trow<<" ,input.cols = "<<input.cols<<", input.rows = "<<input.rows<<endl;
-        //input.at<uchar>(trow,tcol) = 255;
+        trow = result_y[i].y;
+        tcol = result_y[i].x;
         topview_yellow_curve.at<Vec3b>(trow,tcol) = Vec3b(255,0,0);
-        //output.at<uchar>(trow,tcol) = 255;
     }
 
-    for(int i = 0; i<loc.size(); i++)
+    for(int i = 0; i<print_points_y.size(); i++)
     {
-        trow = loc[i].y;
-        tcol = loc[i].x;
-        loc_mat.at<uchar>(trow,tcol) = 255;
+        trow = print_points_y[i].y;
+        tcol = print_points_y[i].x;
+        loc_mat_y.at<uchar>(trow,tcol) = 255;
     }
 
-    //Display input and output
-    imshow("loc_mat",loc_mat);
-    imshow("topview_yellow_curve",topview_yellow_curve);
-    waitKey(0);
+    cd.setBinaryInput(topview_white_filter);
+    cd.findLocations();
+    cd.solve();
+    vector<Point2d> result_w = cd.getResult();
+
+    Mat loc_mat_w = Mat::zeros( topview_yellow_filter.rows, topview_yellow_filter.cols, topview_yellow_filter.type() );
+    vector<Point> print_points_w = cd.getLocations();
+    for(int i = 0; i<result_w.size(); i++)
+    {
+        trow = result_w[i].y;
+        tcol = result_w[i].x;
+        topview_white_curve.at<Vec3b>(trow,tcol) = Vec3b(255,0,0);
+    }
+
+    for(int i = 0; i<print_points_w.size(); i++)
+    {
+        trow = print_points_w[i].y;
+        tcol = print_points_w[i].x;
+        loc_mat_w.at<uchar>(trow,tcol) = 255;
+    }
+    
+    ////Display input and output
+    //imshow("loc_mat_w",loc_mat_w);
+    //imshow("loc_mat_y",loc_mat_y);
+    //imshow("topview_white_curve",topview_white_curve);
+    //imshow("topview_yellow_curve",topview_yellow_curve);
+    //waitKey(0);
 
     ////-------------------------- LineDetection -----------------
 
@@ -186,20 +214,19 @@ int main(int argc, char** argv)
     //waitKey(0);
 
     //-------------------------- Project curve points back -----------------
+    Mat re_proj = input.clone();
     Mat lambda_inv = lambda.inv();
     cout<<"lambda_inv = "<<endl<<lambda_inv<<endl;
     Mat chs[2];
 
 
-    Mat draw_points = Mat(result);
+    Mat draw_points_y = Mat(result_y);
     Mat draw2;
-    split(draw_points,chs);//split source 
+    split(draw_points_y,chs);//split source 
 
     hconcat(chs[0],chs[1],draw2); 
     hconcat(draw2,Mat::ones(Size(1,draw2.rows),draw2.type()),draw2); 
-    //hconcat(draw_points,Mat::ones(draw_points.rows,1,draw_points.type()),draw2); 
     draw2 = draw2.t();
-
 
     Mat bp = lambda_inv*draw2;
     bp = bp.t();
@@ -212,14 +239,6 @@ int main(int argc, char** argv)
         bp.row(i) = bp.row(i)/bp.at<double>(i,2);
     }
 
-
-
-
-
-    Mat re_proj = input.clone();
-
-
-
     for(int i = 0; i<bp.rows-1; i++)
     {
         line(re_proj, Point(bp.at<double>(i,0),bp.at<double>(i,1)), Point(bp.at<double>(i+1,0),bp.at<double>(i+1,1)), Scalar(255,0,0), 5, 8, 0);
@@ -231,6 +250,40 @@ int main(int argc, char** argv)
         re_proj.at<Vec3b>(trow,tcol) = Vec3b(255,0,0);
         //output.at<uchar>(trow,tcol) = 255;
     }
+    
+
+    Mat draw_points_w = Mat(result_w);
+    split(draw_points_w,chs);//split source 
+
+    hconcat(chs[0],chs[1],draw2); 
+    hconcat(draw2,Mat::ones(Size(1,draw2.rows),draw2.type()),draw2); 
+    draw2 = draw2.t();
+
+    bp = lambda_inv*draw2;
+    bp = bp.t();
+
+    cout<<"bp.rows = "<<bp.rows<<endl;
+
+    for(int i = 0 ; i < bp.rows;i++)
+    {
+        //cout<<"bp.at<64F>(i,2) = "<<bp.at<double>(i,2)<<endl;
+        bp.row(i) = bp.row(i)/bp.at<double>(i,2);
+    }
+
+    for(int i = 0; i<bp.rows-1; i++)
+    {
+        line(re_proj, Point(bp.at<double>(i,0),bp.at<double>(i,1)), Point(bp.at<double>(i+1,0),bp.at<double>(i+1,1)), Scalar(255,0,0), 5, 8, 0);
+        //cout<<"result[i] = "<<result[i]<<endl;
+        trow = bp.at<double>(i,1);
+        tcol = bp.at<double>(i,0);
+        //cout<<"tcol = "<<tcol<<", trow = "<<trow<<" ,input.cols = "<<input.cols<<", input.rows = "<<input.rows<<endl;
+        //input.at<uchar>(trow,tcol) = 255;
+        re_proj.at<Vec3b>(trow,tcol) = Vec3b(0,255,0);
+        //output.at<uchar>(trow,tcol) = 255;
+    }
+
+
+
     imshow("re_proj",re_proj);
     waitKey(0);
 
