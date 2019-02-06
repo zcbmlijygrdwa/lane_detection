@@ -82,7 +82,7 @@ int main(int argc, char** argv)
         //imshow("topview_c",topview_c);
         //waitKey(0);
 
-        imwrite("outputs/top_view/topview"+to_string(frameCount)+".jpg",topview_c);
+        //imwrite("outputs/top_view/topview"+to_string(frameCount)+".jpg",topview_c);
 
 
         //-------------------------- HSV color filter to remove useless colors -----------------
@@ -321,7 +321,7 @@ int main(int argc, char** argv)
         //fillConvexPoly(re_proj,back_proj_points,Scalar(0,0,255),16,0);
 
         imshow("re_proj",re_proj);
-        imwrite("outputs/re_proj/re_proj"+to_string(frameCount)+".jpg",re_proj);
+        //imwrite("outputs/re_proj/re_proj"+to_string(frameCount)+".jpg",re_proj);
         waitKey(1);
         frameCount++;
     }
