@@ -28,6 +28,13 @@ int main(int argc, char** argv)
 
     int frameCount = 0;
 
+    double* params_y = (double*)calloc(3,sizeof(double));
+    double* params_w = (double*)calloc(3,sizeof(double));
+
+    // void fill_n (OutputIterator first, Size n, const T& val);
+    fill_n(params_y,3,1);
+    fill_n(params_w,3,1);
+
     while(cap.isOpened())
     {
         cap>>input;
@@ -73,7 +80,7 @@ int main(int argc, char** argv)
         // Get the Perspective Transform Matrix i.e. lambda 
         lambda = getPerspectiveTransform( inputQuad, outputQuad );
 
-        cout<<"lambda = "<<endl<<lambda<<endl;
+        //cout<<"lambda = "<<endl<<lambda<<endl;
 
         // Apply the Perspective Transform just found to the src
         warpPerspective(input,topview_c,lambda,topview_c.size() );
@@ -104,7 +111,7 @@ int main(int argc, char** argv)
         // Convert from BGR to HSV colorspace
         cvtColor(topview_c, topview_yellow_filter, COLOR_RGB2HSV);
 
-        cout<<"low_H = "<<low_H<<endl;
+        //cout<<"low_H = "<<low_H<<endl;
 
         // Detect the object based on HSV Range Values
         inRange(topview_yellow_filter, Scalar(low_H, low_S, low_V), Scalar(high_H, high_S, high_V), topview_yellow_filter);
@@ -123,7 +130,7 @@ int main(int argc, char** argv)
         // Convert from BGR to HSV colorspace
         cvtColor(topview_c, topview_white_filter, COLOR_RGB2HSV);
 
-        cout<<"low_H = "<<low_H<<endl;
+        //cout<<"low_H = "<<low_H<<endl;
 
         // Detect the object based on HSV Range Values
         inRange(topview_white_filter, Scalar(low_H, low_S, low_V), Scalar(high_H, high_S, high_V), topview_white_filter);
@@ -143,10 +150,13 @@ int main(int argc, char** argv)
         topview_white_curve = topview_c.clone();
         topview_curve = topview_c.clone();
 
-        CurveDetection cd_y;
+        CurveDetection cd_y(params_y);
         cd_y.setBinaryInput(topview_yellow_filter);
         cd_y.findLocations();
         cd_y.solve();
+        cd_y.getParams(params_y);
+
+        cout<<"params_y: ["<<params_y[0]<<", "<<params_y[1]<<", "<<params_y[2]<<endl;
         vector<Point2d> result_y = cd_y.getResult();
 
         Mat loc_mat_y = Mat::zeros( topview_yellow_filter.rows, topview_yellow_filter.cols, topview_yellow_filter.type() );
@@ -166,10 +176,14 @@ int main(int argc, char** argv)
             loc_mat_y.at<uchar>(trow,tcol) = 255;
         }
 
-        CurveDetection cd_w;
+        CurveDetection cd_w(params_w);
         cd_w.setBinaryInput(topview_white_filter);
         cd_w.findLocations();
         cd_w.solve();
+        cd_w.getParams(params_w);
+
+        cout<<"params_w: ["<<params_w[0]<<", "<<params_w[1]<<", "<<params_w[2]<<endl;
+
         vector<Point2d> result_w = cd_w.getResult();
 
         Mat loc_mat_w = Mat::zeros( topview_white_filter.rows, topview_white_filter.cols, topview_white_filter.type() );
@@ -234,7 +248,7 @@ int main(int argc, char** argv)
         //-------------------------- Project curve points back -----------------
         Mat re_proj = input.clone();
         Mat lambda_inv = lambda.inv();
-        cout<<"lambda_inv = "<<endl<<lambda_inv<<endl;
+        //cout<<"lambda_inv = "<<endl<<lambda_inv<<endl;
         Mat chs[2];
 
 
@@ -249,7 +263,7 @@ int main(int argc, char** argv)
         Mat bp = lambda_inv*draw2;
         bp = bp.t();
 
-        cout<<"bp.rows = "<<bp.rows<<endl;
+        //cout<<"bp.rows = "<<bp.rows<<endl;
 
         for(uint i = 0 ; i < bp.rows;i++)
         {
@@ -279,7 +293,7 @@ int main(int argc, char** argv)
         bp = lambda_inv*draw2;
         bp = bp.t();
 
-        cout<<"bp.rows = "<<bp.rows<<endl;
+        //cout<<"bp.rows = "<<bp.rows<<endl;
 
         for(uint i = 0 ; i < bp.rows;i++)
         {
@@ -325,5 +339,8 @@ int main(int argc, char** argv)
         waitKey(1);
         frameCount++;
     }
+
+    free(params_y);
+    free(params_w);
     return 0;
 }
